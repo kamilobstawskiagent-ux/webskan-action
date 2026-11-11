@@ -1,0 +1,35 @@
+name: test
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md', 'LICENSE']
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC: makes sure the action still works against the live service
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit webskan.com (5 pages)
+        id: audit
+        uses: ./
+        with:
+          url: https://webskan.com
+          pages: 5
+          key: ${{ secrets.WEBSKAN_KEY }}
+          fail-on: medium
+          min-performance: 80
+      - name: Re-check the same audit (diff must be empty)
+        id: recheck
+        uses: ./
+        with:
+          url: https://webskan.com
+          key: ${{ secrets.WEBSKAN_KEY }}
+          recheck-of: ${{ steps.audit.outputs.audit-id }}
+          fail-on: medium
+      - name: Print outputs
+        run: |
+          echo "audit ${{ steps.audit.outputs.audit-id }}: high=${{ steps.audit.outputs.high }} medium=${{ steps.audit.outputs.medium }} low=${{ steps.audit.outputs.low }} perf=${{ steps.audit.outputs.performance-mobile }}"
+          echo "recheck ${{ steps.recheck.outputs.audit-id }}: fixed=${{ steps.recheck.outputs.fixed }} open=${{ steps.recheck.outputs.open }} new=${{ steps.recheck.outputs.new }}"
+          test -s "${{ steps.audit.outputs.result-file }}"

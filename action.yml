@@ -1,0 +1,93 @@
+name: 'Webskan website audit'
+description: 'Audit the live site after a deploy: Lighthouse, technical SEO, accessibility (axe-core), security headers, exposed files, broken links. Fails the job on high findings; re-check gives a fixed / open / new diff.'
+author: 'Webskan'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+inputs:
+  url:
+    description: 'Public URL of the deployed site (e.g. https://example.com or a preview URL).'
+    required: true
+  pages:
+    description: 'How many pages to crawl (1-30).'
+    required: false
+    default: '10'
+  key:
+    description: 'Webskan Developer license key (store it as a repository secret). Without it the free plan applies: 2 audits per IP per day and 1 audit per host per day – CI runners share IP addresses, so use a key for anything that runs regularly.'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Fail the job when there is at least one finding of this severity: high (default), medium, or none (report only).'
+    required: false
+    default: 'high'
+  min-performance:
+    description: 'Fail the job when the Lighthouse mobile performance score is below this number (0 = off).'
+    required: false
+    default: '0'
+  recheck-of:
+    description: 'auditId of a previous audit of the same site: runs the same audit again and reports fixed / still open / new findings.'
+    required: false
+    default: ''
+  timeout-minutes:
+    description: 'Give up waiting for the result after this many minutes (a full audit normally takes 1-5 minutes).'
+    required: false
+    default: '20'
+  fail-on-error:
+    description: 'Fail the job when the audit itself could not run (site unreachable, limit reached, timeout). Set to false to make that a soft failure.'
+    required: false
+    default: 'true'
+outputs:
+  audit-id:
+    description: 'Id of the audit (use it later as recheck-of).'
+    value: ${{ steps.audit.outputs.audit-id }}
+  status:
+    description: 'done, error or timeout.'
+    value: ${{ steps.audit.outputs.status }}
+  passed:
+    description: 'true when no finding crossed the fail-on / min-performance thresholds.'
+    value: ${{ steps.audit.outputs.passed }}
+  high:
+    description: 'Number of high-severity findings.'
+    value: ${{ steps.audit.outputs.high }}
+  medium:
+    description: 'Number of medium-severity findings.'
+    value: ${{ steps.audit.outputs.medium }}
+  low:
+    description: 'Number of low-severity findings.'
+    value: ${{ steps.audit.outputs.low }}
+  total:
+    description: 'Total number of findings (including info).'
+    value: ${{ steps.audit.outputs.total }}
+  performance-mobile:
+    description: 'Lighthouse mobile performance score (0-100).'
+    value: ${{ steps.audit.outputs.performance-mobile }}
+  performance-desktop:
+    description: 'Lighthouse desktop performance score (0-100).'
+    value: ${{ steps.audit.outputs.performance-desktop }}
+  fixed:
+    description: 'Re-check only: number of findings from the previous audit that are gone.'
+    value: ${{ steps.audit.outputs.fixed }}
+  open:
+    description: 'Re-check only: number of findings still present.'
+    value: ${{ steps.audit.outputs.open }}
+  new:
+    description: 'Re-check only: number of findings that were not in the previous audit.'
+    value: ${{ steps.audit.outputs.new }}
+  result-file:
+    description: 'Path of the full result JSON (every finding with id, area, severity, detail, pages; Lighthouse metrics).'
+    value: ${{ steps.audit.outputs.result-file }}
+runs:
+  using: 'composite'
+  steps:
+    - id: audit
+      shell: bash
+      env:
+        WEBSKAN_URL: ${{ inputs.url }}
+        WEBSKAN_PAGES: ${{ inputs.pages }}
+        WEBSKAN_KEY: ${{ inputs.key }}
+        WEBSKAN_FAIL_ON: ${{ inputs.fail-on }}
+        WEBSKAN_MIN_PERFORMANCE: ${{ inputs.min-performance }}
+        WEBSKAN_RECHECK_OF: ${{ inputs.recheck-of }}
+        WEBSKAN_TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+        WEBSKAN_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: bash "${{ github.action_path }}/webskan-audit.sh"
