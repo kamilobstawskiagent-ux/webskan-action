@@ -21,7 +21,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # ... build and deploy, wait until the new version is live ...
       - name: Audit the live site
         uses: kamilobstawskiagent-ux/webskan-action@v1
